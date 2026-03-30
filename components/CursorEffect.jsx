@@ -96,6 +96,10 @@ export default function CursorEffect() {
       setHovering(false)
     }
 
+    /* ── Trail buffer ───────────────────────────────── */
+    const trail = []
+    const MAX_TRAIL = 50  // ~0.83 s at 60 fps
+
     /* ── RAF loop ────────────────────────────────────── */
     const tick = () => {
       /* Spring-lerp ring */
@@ -115,47 +119,52 @@ export default function CursorEffect() {
         auraRef.current.style.transform = `translate(calc(${ax}px - 50%), calc(${ay}px - 50%))`
 
       /* ── Canvas comet trail ───────────────────────────
-         Technique: "destination-out" compositing fades the
-         existing pixels toward transparency each frame, while
-         new glow dots are layered on top in source-over mode.
-         The canvas itself stays transparent everywhere the trail
-         has fully faded, so the page shows through cleanly.
+         Store cursor positions in a fixed-length ring buffer.
+         Each frame: clear the canvas entirely, then redraw every
+         stored point with opacity scaled by its age. This avoids
+         the 8-bit alpha precision issue that causes destination-out
+         fading to leave a permanent ghost.
       ─────────────────────────────────────────────────── */
       const W = canvas.width
       const H = canvas.height
 
-      /* Fade existing trail (erase 4 % of alpha per frame → ~1 s tail at 60 fps) */
-      ctx.globalCompositeOperation = 'destination-out'
-      ctx.fillStyle = 'rgba(0,0,0,0.04)'
-      ctx.fillRect(0, 0, W, H)
-      ctx.globalCompositeOperation = 'source-over'
-
-      /* Draw new glow point only when cursor is inside the viewport */
+      /* Append current position to trail buffer */
       if (tx > 0 && ty > 0) {
-        const [vr, vg, vb] = hexRGB(currentColour)
+        trail.push({ x: tx, y: ty, colour: currentColour })
+        if (trail.length > MAX_TRAIL) trail.shift()
+      }
+
+      /* Clear canvas fully — no residual pixels */
+      ctx.clearRect(0, 0, W, H)
+
+      /* Draw each trail point, oldest = dim, newest = bright */
+      for (let i = 0; i < trail.length; i++) {
+        const p = trail[i]
+        const t = (i + 1) / trail.length   // 0 → oldest, 1 → newest
+        const [vr, vg, vb] = hexRGB(p.colour)
 
         /* Layer 1 — large soft halo (40 px radius) */
-        const halo = ctx.createRadialGradient(tx, ty, 0, tx, ty, 40)
-        halo.addColorStop(0, `rgba(${vr},${vg},${vb},0.14)`)
+        const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 40)
+        halo.addColorStop(0, `rgba(${vr},${vg},${vb},${0.14 * t})`)
         halo.addColorStop(1, `rgba(${vr},${vg},${vb},0)`)
         ctx.fillStyle = halo
         ctx.beginPath()
-        ctx.arc(tx, ty, 40, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, 40, 0, Math.PI * 2)
         ctx.fill()
 
         /* Layer 2 — medium glow (12 px radius) */
-        const mid = ctx.createRadialGradient(tx, ty, 0, tx, ty, 12)
-        mid.addColorStop(0, `rgba(${vr},${vg},${vb},0.55)`)
+        const mid = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 12)
+        mid.addColorStop(0, `rgba(${vr},${vg},${vb},${0.55 * t})`)
         mid.addColorStop(1, `rgba(${vr},${vg},${vb},0)`)
         ctx.fillStyle = mid
         ctx.beginPath()
-        ctx.arc(tx, ty, 12, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2)
         ctx.fill()
 
         /* Layer 3 — bright core (2.5 px) */
-        ctx.fillStyle = `rgba(${vr},${vg},${vb},0.9)`
+        ctx.fillStyle = `rgba(${vr},${vg},${vb},${0.9 * t})`
         ctx.beginPath()
-        ctx.arc(tx, ty, 2.5, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2)
         ctx.fill()
       }
 
