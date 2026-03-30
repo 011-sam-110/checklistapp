@@ -15,6 +15,7 @@ export default function Checklist() {
     activeWeekIndex, setActiveWeekIndex,
     setActiveChecklist, createChecklist, deleteChecklist, renameChecklist,
     toggleTask, resetActiveChecked,
+    addWeek,
     addTask, deleteTask, updateTask, moveTask, batchAddTasks,
     addCategory, deleteCategory, updateCategory,
   } = useChecklists()
@@ -205,6 +206,28 @@ export default function Checklist() {
               </button>
             )
           })}
+
+          {/* ADD WEEK button — edit mode only */}
+          {editMode && (
+            <button
+              onClick={addWeek}
+              style={{ fontFamily: 'var(--font-display)', fontSize: '0.65rem',
+                letterSpacing: '0.15em', padding: '0.5rem 1rem', borderRadius: '6px',
+                background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.3)',
+                color: 'rgba(255,170,0,0.8)', cursor: 'none', transition: 'all 0.15s',
+                alignSelf: 'center' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background  = 'rgba(255,170,0,0.12)'
+                e.currentTarget.style.borderColor = 'rgba(255,170,0,0.5)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background  = 'rgba(255,170,0,0.06)'
+                e.currentTarget.style.borderColor = 'rgba(255,170,0,0.3)'
+              }}
+            >
+              + ADD WEEK
+            </button>
+          )}
 
           {/* FILL WEEK button — edit mode only */}
           {editMode && weeks.length > 0 && (
