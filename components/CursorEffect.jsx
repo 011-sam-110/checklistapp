@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const SUBJECT_COLOURS = {
-  dsa:    '#00ffcc',
-  sys:    '#ff9500',
-  prog:   '#39ff14',
-  skills: '#ff3cac',
-}
 const DEFAULT_COLOUR = '#00ffcc'
+
+function getSubjectColour(subjectId) {
+  if (!subjectId) return DEFAULT_COLOUR
+  const val = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--cat-${subjectId}`)
+    .trim()
+  return val || DEFAULT_COLOUR
+}
 
 /* Parse a 6-char hex colour → [r, g, b] integers */
 function hexRGB(hex) {
@@ -58,7 +60,7 @@ export default function CursorEffect() {
       const target    = e.target
       const subjectEl = target.closest('[data-subject]')
       const colour    = subjectEl
-        ? (SUBJECT_COLOURS[subjectEl.dataset.subject] ?? DEFAULT_COLOUR)
+        ? getSubjectColour(subjectEl.dataset.subject)
         : DEFAULT_COLOUR
 
       currentColour = colour
